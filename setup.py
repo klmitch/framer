@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 
 from setuptools import setup
 
@@ -29,6 +30,20 @@ def readfile(filename):
         return f.read()
 
 
+# Read in the requirements.txt file first
+install_requires = readreq('requirements.txt')
+
+# Determine what package we need to add to get asyncio
+if sys.version_info >= (3, 4):
+    pass
+elif sys.version_info >= (3, 3):
+    install_requires.append('asyncio')
+elif sys.version_info >= (2, 6):
+    install_requires.append('trollius')
+else:
+    sys.exit("No support for asyncio available in this version of Python")
+
+
 setup(
     name='framer',
     version='0.1.0',
@@ -49,6 +64,6 @@ setup(
         'Programming Language :: Python :: 3.4',
     ],
     packages=['framer'],
-    install_requires=readreq('requirements.txt'),
+    install_requires=install_requires,
     tests_require=readreq('test-requirements.txt'),
 )

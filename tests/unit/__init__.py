@@ -1,4 +1,4 @@
-# Copyright (C) 2012 by Kevin L. Mitchell <klmitch@mit.edu>
+# Copyright (C) 2014 by Kevin L. Mitchell <klmitch@mit.edu>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
