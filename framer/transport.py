@@ -295,7 +295,7 @@ class FramerAdaptor(object):
         Called by the client protocol to close the connection.  If the
         transport has a buffer for outgoing data, buffered data will
         be flushed asynchronously.  No more data will be received.
-        After all buffered data is flushed, the protocol’s
+        After all buffered data is flushed, the protocol's
         ``connection_lost()`` method will be called with ``None`` as
         its argument.
         """
@@ -343,7 +343,7 @@ class FramerAdaptor(object):
     def pause_reading(self):
         """
         Called by the client protocol to pause the receiving end of
-        the transport.  No data will be passed to the protocol’s
+        the transport.  No data will be passed to the protocol's
         ``frame_received()`` method until ``resume_reading()`` is
         called.
         """
@@ -357,7 +357,7 @@ class FramerAdaptor(object):
     def resume_reading(self):
         """
         Called by the client protocol to resume the receiving end.
-        The protocol’s ``frame_received()`` method will be called once
+        The protocol's ``frame_received()`` method will be called once
         again if some data is available for reading.
         """
 
@@ -377,7 +377,7 @@ class FramerAdaptor(object):
         Called by the client protocol to close the transport
         immediately, without waiting for pending operations to
         complete.  Buffered data will be lost.  No more data will be
-        received.  The protocol’s ``connection_lost()`` method will
+        received.  The protocol's ``connection_lost()`` method will
         eventually be called with ``None`` as its argument.
         """
 
@@ -414,7 +414,7 @@ class FramerAdaptor(object):
         Called by the client protocol to set the high- and low-water
         limits for write flow control.
 
-        These two values control when call the protocol’s
+        These two values control when call the protocol's
         ``pause_writing()`` and ``resume_writing()`` methods are
         called.
 
