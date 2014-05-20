@@ -25,9 +25,9 @@ import six
 from framer import exc
 
 # Need the MutableMapping class from collections for FramerState
-if sys.version_info >= (3, 3):
+if sys.version_info >= (3, 3):  # pragma: no cover
     from collections.abc import MutableMapping
-else:
+else:  # pragma: no cover
     from collections import MutableMapping
 
 
@@ -51,7 +51,7 @@ class Framer(object):
         :param state: The state to initialize.
         """
 
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
     def to_frame(self, data, state):
@@ -71,7 +71,7 @@ class Framer(object):
                   framers always return ``bytes`` objects.
         """
 
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
     def to_bytes(self, frame, state):
@@ -88,7 +88,7 @@ class Framer(object):
         :returns: Bytes that may be transmitted on the stream.
         """
 
-        pass
+        pass  # pragma: no cover
 
 
 class FramerState(MutableMapping):
