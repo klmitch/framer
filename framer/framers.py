@@ -379,12 +379,12 @@ class LineFramer(Framer):
         # Find the next newline
         data_len = data.find(b'\n')
 
-        if idx < 0:
+        if data_len < 0:
             # No line to extract
             raise exc.NoFrames()
 
         # Track how much to exclude
-        frame_len = idx + 1
+        frame_len = data_len + 1
 
         # Are we to exclude carriage returns?
         if (self.carriage_return and data_len and
@@ -494,10 +494,11 @@ class LengthEncodedFramer(Framer):
         """
 
         # Generate the bytes from the frame
-        return self.encode_length(frame, state) + six.binary_type(frame)
+        frame = six.binary_type(frame)
+        return self.encode_length(frame, state) + frame
 
     @abc.abstractmethod
-    def encode_length(frame, state):
+    def encode_length(self, frame, state):
         """
         Encode the length of the specified frame into a sequence of
         bytes.  The frame will be appended to the byte sequence for
@@ -512,10 +513,10 @@ class LengthEncodedFramer(Framer):
         :returns: The frame length, encoded into a sequence of bytes.
         """
 
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
-    def decode_length(data, state):
+    def decode_length(self, data, state):
         """
         Extract and decode a frame length from the data buffer.  The
         consumed data should be removed from the buffer.  If the
@@ -532,7 +533,7 @@ class LengthEncodedFramer(Framer):
         :returns: The frame length, as an integer.
         """
 
-        pass
+        pass  # pragma: no cover
 
 
 class StructFramer(LengthEncodedFramer):
@@ -577,7 +578,7 @@ class StructFramer(LengthEncodedFramer):
         # Save the format
         self.fmt = struct.Struct(fmt)
 
-    def encode_length(frame, state):
+    def encode_length(self, frame, state):
         """
         Encode the length of the specified frame into a sequence of
         bytes.  The frame will be appended to the byte sequence for
@@ -595,7 +596,7 @@ class StructFramer(LengthEncodedFramer):
         # Pack the frame length
         return self.fmt.pack(len(frame))
 
-    def decode_length(data, state):
+    def decode_length(self, data, state):
         """
         Extract and decode a frame length from the data buffer.  The
         consumed data should be removed from the buffer.  If the

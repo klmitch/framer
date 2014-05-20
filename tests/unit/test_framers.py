@@ -17,6 +17,7 @@
 import unittest
 
 import mock
+import six
 
 from framer import exc
 from framer import framers
@@ -159,3 +160,305 @@ class FramerStateTest(unittest.TestCase):
         }
 
         self.assertEqual(len(state), 4)
+
+
+class IdentityFramerTest(unittest.TestCase):
+    def test_to_frame(self):
+        data = bytearray(b'this is a test')
+        framer = framers.IdentityFramer()
+
+        result = framer.to_frame(data, None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test')
+        self.assertEqual(data, bytearray(b''))
+
+    def test_to_bytes(self):
+        framer = framers.IdentityFramer()
+
+        result = framer.to_bytes(bytearray(b'a frame'), None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'a frame')
+
+
+class ChunkFramerTest(unittest.TestCase):
+    def test_init(self):
+        framer = framers.ChunkFramer(123)
+
+        self.assertEqual(framer.chunk_len, 123)
+
+    def test_initialize_state(self):
+        framer = framers.ChunkFramer(123)
+        state = framers.FramerState()
+
+        framer.initialize_state(state)
+
+        self.assertEqual(dict(state), {'chunk_remaining': 123})
+
+    def test_to_frame_consumed(self):
+        data = bytearray(b'this is a test')
+        framer = framers.ChunkFramer(123)
+        state = framers.FramerState()
+        state.chunk_remaining = 0
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, state)
+        self.assertEqual(data, bytearray(b'this is a test'))
+        self.assertEqual(state.chunk_remaining, 0)
+
+    def test_to_frame_moredata(self):
+        data = bytearray(b'this is a test')
+        framer = framers.ChunkFramer(123)
+        state = framers.FramerState()
+        state.chunk_remaining = 4
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this')
+        self.assertEqual(data, bytearray(b' is a test'))
+        self.assertEqual(state.chunk_remaining, 0)
+
+    def test_to_frame_lessdata(self):
+        data = bytearray(b'this is a test')
+        framer = framers.ChunkFramer(123)
+        state = framers.FramerState()
+        state.chunk_remaining = 123
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test')
+        self.assertEqual(data, bytearray(b''))
+        self.assertEqual(state.chunk_remaining, 109)
+
+    def test_to_frame_exactdata(self):
+        data = bytearray(b'this is a test')
+        framer = framers.ChunkFramer(123)
+        state = framers.FramerState()
+        state.chunk_remaining = 14
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test')
+        self.assertEqual(data, bytearray(b''))
+        self.assertEqual(state.chunk_remaining, 0)
+
+
+class LineFramerTest(unittest.TestCase):
+    def test_init_carriage_return(self):
+        framer = framers.LineFramer()
+
+        self.assertEqual(framer.carriage_return, True)
+        self.assertEqual(framer.line_end, b'\r\n')
+
+    def test_init_no_carriage_return(self):
+        framer = framers.LineFramer(False)
+
+        self.assertEqual(framer.carriage_return, False)
+        self.assertEqual(framer.line_end, b'\n')
+
+    def test_to_frame_partial(self):
+        data = bytearray(b'this is a test')
+        framer = framers.LineFramer()
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, None)
+        self.assertEqual(data, bytearray(b'this is a test'))
+
+    def test_to_frame_no_carriage_return_normal(self):
+        data = bytearray(b'this is a test\nor something')
+        framer = framers.LineFramer()
+
+        result = framer.to_frame(data, None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test')
+        self.assertEqual(data, bytearray(b'or something'))
+
+    def test_to_frame_with_carriage_return_normal(self):
+        data = bytearray(b'this is a test\r\nor something')
+        framer = framers.LineFramer()
+
+        result = framer.to_frame(data, None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test')
+        self.assertEqual(data, bytearray(b'or something'))
+
+    def test_to_frame_no_carriage_return_option(self):
+        data = bytearray(b'this is a test\nor something')
+        framer = framers.LineFramer(False)
+
+        result = framer.to_frame(data, None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test')
+        self.assertEqual(data, bytearray(b'or something'))
+
+    def test_to_frame_with_carriage_return_option(self):
+        data = bytearray(b'this is a test\r\nor something')
+        framer = framers.LineFramer(False)
+
+        result = framer.to_frame(data, None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test\r')
+        self.assertEqual(data, bytearray(b'or something'))
+
+    def test_to_bytes_normal(self):
+        framer = framers.LineFramer()
+
+        result = framer.to_bytes(bytearray(b'this is a test'), None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test\r\n')
+
+    def test_to_bytes_option(self):
+        framer = framers.LineFramer(False)
+
+        result = framer.to_bytes(bytearray(b'this is a test'), None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is a test\n')
+
+
+class TrialFramer(framers.LengthEncodedFramer):
+    def __init__(self):
+        self._calls = []
+
+    def encode_length(self, frame, state):
+        self._calls.append(('encode_length', frame, state))
+        return ('%04d' % len(frame)).encode('utf-8')
+
+    def decode_length(self, data, state):
+        self._calls.append(('decode_length', data, state))
+        if len(data) < 4:
+            raise exc.NoFrames()
+        length = int(data[:4])
+        del data[:4]
+        return length
+
+
+class LengthEncodedFramerTest(unittest.TestCase):
+    def test_initialize_state(self):
+        framer = TrialFramer()
+        state = framers.FramerState()
+
+        framer.initialize_state(state)
+
+        self.assertEqual(dict(state), {'length': None})
+
+    def test_to_frame_nohanglen_short(self):
+        data = bytearray(b'0014this is a tes')
+        framer = TrialFramer()
+        state = framers.FramerState()
+        framer.initialize_state(state)
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, state)
+        self.assertEqual(dict(state), {'length': 14})
+        self.assertEqual(data, bytearray(b'this is a tes'))
+        self.assertEqual(framer._calls, [
+            ('decode_length', data, state),
+        ])
+
+    def test_to_frame_nohanglen_complete(self):
+        data = bytearray(b'0014this is a test!')
+        framer = TrialFramer()
+        state = framers.FramerState()
+        framer.initialize_state(state)
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, 'this is a test')
+        self.assertEqual(dict(state), {'length': None})
+        self.assertEqual(data, bytearray(b'!'))
+        self.assertEqual(framer._calls, [
+            ('decode_length', data, state),
+        ])
+
+    def test_to_frame_hanglen_short(self):
+        data = bytearray(b'0014this is a tes')
+        framer = TrialFramer()
+        state = framers.FramerState()
+        framer.initialize_state(state)
+        state.length = 18
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, state)
+        self.assertEqual(dict(state), {'length': 18})
+        self.assertEqual(data, bytearray(b'0014this is a tes'))
+        self.assertEqual(framer._calls, [])
+
+    def test_to_frame_hanglen_complete(self):
+        data = bytearray(b'0014this is a test!')
+        framer = TrialFramer()
+        state = framers.FramerState()
+        framer.initialize_state(state)
+        state.length = 18
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, '0014this is a test')
+        self.assertEqual(dict(state), {'length': None})
+        self.assertEqual(data, bytearray(b'!'))
+        self.assertEqual(framer._calls, [])
+
+    def test_to_bytes(self):
+        framer = TrialFramer()
+
+        result = framer.to_bytes(bytearray(b'this is a test'), None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'0014this is a test')
+        self.assertEqual(framer._calls, [
+            ('encode_length', bytearray(b'this is a test'), None),
+        ])
+
+
+class StructFramerTest(unittest.TestCase):
+    @mock.patch('struct.Struct', return_value='struct')
+    def test_init_unrecognized(self, mock_Struct):
+        self.assertRaises(ValueError, framers.StructFramer, '@=<>!xz')
+        self.assertFalse(mock_Struct.called)
+
+    @mock.patch('struct.Struct', return_value='struct')
+    def test_init_nospec(self, mock_Struct):
+        self.assertRaises(ValueError, framers.StructFramer, '@=<>!x')
+        self.assertFalse(mock_Struct.called)
+
+    @mock.patch('struct.Struct', return_value='struct')
+    def test_init_doublespec(self, mock_Struct):
+        self.assertRaises(ValueError, framers.StructFramer, '@=<>!xII')
+        self.assertFalse(mock_Struct.called)
+
+    @mock.patch('struct.Struct', return_value='struct')
+    def test_init_acceptable(self, mock_Struct):
+        result = framers.StructFramer('@=<>!xI')
+
+        self.assertEqual(result.fmt, 'struct')
+        mock_Struct.assert_called_once_with('@=<>!xI')
+
+    def test_encode_length(self):
+        framer = framers.StructFramer('!B')
+
+        result = framer.encode_length(b'this is a test', None)
+
+        self.assertEqual(result, b'\x0e')
+
+    def test_decode_length_short(self):
+        data = bytearray(b'\x00')
+        framer = framers.StructFramer('!H')
+
+        self.assertRaises(exc.NoFrames, framer.decode_length, data, None)
+        self.assertEqual(data, bytearray(b'\x00'))
+
+    def test_decode_length_long(self):
+        data = bytearray(b'\x00\x0ethis is a test')
+        framer = framers.StructFramer('!H')
+
+        result = framer.decode_length(data, None)
+
+        self.assertEqual(result, 14)
+        self.assertEqual(data, bytearray(b'this is a test'))
