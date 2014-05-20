@@ -19,7 +19,7 @@ import collections
 import six
 
 from framer import exc
-from framer import framer
+from framer import framers
 
 
 FramerElement = collections.namedtuple(
@@ -173,7 +173,7 @@ class FramerAdaptor(object):
                 recv_state = args[1]
             else:
                 # Allocate one
-                state = framer.FramerState()
+                state = framers.FramerState()
 
                 # Initialize it
                 send.initialize_state(state)
@@ -190,7 +190,7 @@ class FramerAdaptor(object):
                     send_state = kwargs['send_state']
                 else:
                     # Allocate one and initialize it
-                    send_state = framer.FramerState()
+                    send_state = framers.FramerState()
                     send.initialize_state(send_state)
 
             # How about a receive framer?
@@ -202,7 +202,7 @@ class FramerAdaptor(object):
                     recv_state = kwargs['recv_state']
                 else:
                     # Allocate one and initialize it
-                    recv_state = framer.FramerState()
+                    recv_state = framers.FramerState()
                     recv.initialize_state(recv_state)
 
         # Create and return a FramerElement
@@ -267,8 +267,8 @@ class FramerAdaptor(object):
         while self._recv_buf and not self._recv_paused:
             try:
                 # Extract one frame
-                frame = self._recv_framer.to_frame(self._recv_buf,
-                                                   self._recv_state)
+                frame = self._recv_framers.to_frame(self._recv_buf,
+                                                    self._recv_state)
             except exc.NoFrames:
                 # There's data in the buffer, but no complete frames
                 break
