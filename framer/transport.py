@@ -69,7 +69,7 @@ class FramerAdaptor(object):
 
         # Some basic sanity checks
         if not six.callable(client):
-            raise FramerException("Protocol factory is not a factory")
+            raise exc.FramerException("Protocol factory is not a factory")
 
         # Cannot specify both positional and keyword arguments, but
         # must provide one or the other
@@ -103,10 +103,7 @@ class FramerAdaptor(object):
 
         # A basic sanity check
         if not six.callable(client):
-            raise FramerException("Protocol factory is not a factory")
-
-        # Instantiate and save the client protocol
-        self._client = client()
+            raise exc.FramerException("Protocol factory is not a factory")
 
         # Initialize the framer stack for _interpret_framer()
         self._framers = [FramerElement(None, None, None, None)]
@@ -119,6 +116,10 @@ class FramerAdaptor(object):
 
         # Set the framers
         self._framers = [elem]
+
+        # Instantiate and save the client protocol, now that we have
+        # framers
+        self._client = client()
 
         # Remember the underlying transport
         self._transport = None
@@ -267,8 +268,8 @@ class FramerAdaptor(object):
         while self._recv_buf and not self._recv_paused:
             try:
                 # Extract one frame
-                frame = self._recv_framers.to_frame(self._recv_buf,
-                                                    self._recv_state)
+                frame = self._recv_framer.to_frame(self._recv_buf,
+                                                   self._recv_state)
             except exc.NoFrames:
                 # There's data in the buffer, but no complete frames
                 break
@@ -443,7 +444,7 @@ class FramerAdaptor(object):
         # Call write_eof() on the transport
         self._transport.write_eof()
 
-    def send(self, frame):
+    def send_frame(self, frame):
         """
         Called by the client protocol to send a frame to the remote
         peer.  This method does not block; it buffers the data and
