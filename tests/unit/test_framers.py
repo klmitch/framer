@@ -371,7 +371,7 @@ class LengthEncodedFramerTest(unittest.TestCase):
         result = framer.to_frame(data, state)
 
         self.assertTrue(isinstance(result, six.binary_type))
-        self.assertEqual(result, 'this is a test')
+        self.assertEqual(result, b'this is a test')
         self.assertEqual(dict(state), {'length': None})
         self.assertEqual(data, bytearray(b'!'))
         self.assertEqual(framer._calls, [
@@ -400,7 +400,7 @@ class LengthEncodedFramerTest(unittest.TestCase):
         result = framer.to_frame(data, state)
 
         self.assertTrue(isinstance(result, six.binary_type))
-        self.assertEqual(result, '0014this is a test')
+        self.assertEqual(result, b'0014this is a test')
         self.assertEqual(dict(state), {'length': None})
         self.assertEqual(data, bytearray(b'!'))
         self.assertEqual(framer._calls, [])
