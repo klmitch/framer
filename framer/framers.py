@@ -787,7 +787,7 @@ class COBSFramer(Framer):
         super(COBSFramer, self).__init__()
 
         # Select the variant we're using
-        self.variant = cobsr if reduced else cobs
+        self.variant = variant
 
     def to_frame(self, data, state):
         """
