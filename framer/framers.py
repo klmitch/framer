@@ -15,6 +15,7 @@
 # <http://www.gnu.org/licenses/>.
 
 import abc
+import os
 import struct
 import sys
 
@@ -638,39 +639,49 @@ class StuffingFramer(Framer):
     For this framer, frames are ``bytes``.
     """
 
-    def __init__(self, prefix=b'\xff' * 4, begin=b'\xff', end=b'\xfe',
-                 nop=b'\0'):
+    def __init__(self, begin=b'\xff\xff\xff\xff\xff',
+                 end=b'\xff\xff\xff\xff\xfe', nop=b'\xff\xff\xff\xff\x00'):
         """
         Initialize a ``StuffingFramer`` object.
 
-        :param prefix: A sequence of bytes which prefixes the
-                       begin-frame and end-frame bytes.
-        :param begin: A single byte which, when encountered following
-                      the prefix sequence, indicates the beginning of
-                      a frame.
-        :param end: A single byte which, when encountered following
-                    the prefix sequence, indicates the end of a frame.
-        :param nop: A single byte which, when encountered following
-                    the prefix sequence, is thrown away.  Used to
-                    interrupt sequences internal to the frame which
-                    could be mistaken for the beginning or ending of
-                    the frame.
+        :param begin: A sequence of bytes which, when encountered,
+                      indicates the beginning of a frame.  Must be the
+                      same length as ``end`` and ``nop``, and all
+                      arguments must have a common prefix.
+        :param end: A sequence of bytes which, when encountered,
+                    indicates the end of a frame.  Must be the same
+                    length as ``begin`` and ``nop``, and all arguments
+                    must have a common prefix.
+        :param nop: A sequence of bytes which, when encountered, is
+                    thrown away.  Used to interrupt sequences internal
+                    to the frame which could be mistaken for the
+                    beginning or ending of the frame.  Must be the
+                    same length as ``begin`` and ``end``, and all
+                    arguments must have a common prefix.
         """
-
-        # Do a little sanity-checking
-        if len(begin) != 1 or len(end) != 1 or len(nop) != 1:
-            raise ValueError("begin, end, and nop must be length 1")
-        elif nop == begin or nop == end:
-            raise ValueError("nop must be distinct from begin and end")
-        elif begin == end:
-            raise ValueError("begin and end must be distinct")
 
         super(StuffingFramer, self).__init__()
 
-        self.prefix = six.binary_type(prefix)
-        self.begin = six.binary_type(prefix + begin)
-        self.end = six.binary_type(prefix + end)
-        self.nop = six.binary_type(prefix + nop)
+        # Make sure begin, end, and nop are binary types
+        self.begin = six.binary_type(begin)
+        self.end = six.binary_type(end)
+        self.nop = six.binary_type(nop)
+
+        # Determine the prefix
+        self.prefix = os.path.commonprefix([self.begin, self.end, self.nop])
+
+        # Do a little sanity-checking
+        if not self.begin or not self.end or not self.nop:
+            raise ValueError("no arguments may be empty")
+        elif not self.prefix:
+            raise ValueError("arguments have no common prefix")
+        elif (len(self.begin) != len(self.end) or
+                len(self.begin) != len(self.nop)):
+            raise ValueError("arguments must be the same length")
+        elif self.nop == self.begin or self.nop == self.end:
+            raise ValueError("nop must be distinct from begin and end")
+        elif self.begin == self.end:
+            raise ValueError("begin and end must be distinct")
 
     def initialize_state(self, state):
         """
