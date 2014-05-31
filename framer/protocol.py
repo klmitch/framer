@@ -32,7 +32,7 @@ class FramedProtocol(asyncio.BaseProtocol):
         :param frame: The frame that was received.
         """
 
-        pass
+        pass  # pragma: no cover
 
     def eof_received(self):
         """
@@ -45,4 +45,4 @@ class FramedProtocol(asyncio.BaseProtocol):
                   half-open.
         """
 
-        pass
+        pass  # pragma: no cover

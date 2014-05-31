@@ -13,3 +13,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
+
+
+from framer.exc import FramerException, InvalidFramerSpecification, NoFrames
+from framer.framers import (Framer, FramerState, IdentityFramer, ChunkFramer,
+                            LineFramer, LengthEncodedFramer, StructFramer,
+                            StuffingFramer, COBSFramer)
+from framer.protocol import FramedProtocol
+from framer.transport import FramerAdaptor
+
+
+__all__ = [
+    'FramerException', 'InvalidFramerSpecification', 'NoFrames',
+    'Framer', 'FramerState',
+    'IdentityFramer', 'ChunkFramer',
+    'LineFramer',
+    'LengthEncodedFramer', 'StructFramer',
+    'StuffingFramer', 'COBSFramer',
+    'FramedProtocol',
+    'FramerAdaptor',
+]
