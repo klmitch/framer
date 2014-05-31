@@ -462,3 +462,151 @@ class StructFramerTest(unittest.TestCase):
 
         self.assertEqual(result, 14)
         self.assertEqual(data, bytearray(b'this is a test'))
+
+
+class StuffingFramerTest(unittest.TestCase):
+    def test_init_empty_args(self):
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'', b'abc2', b'abc3')
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'', b'abc3')
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'abc2', b'')
+
+    def test_init_bad_pfx(self):
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'bcd2', b'cde3')
+
+    def test_init_mismatched_len(self):
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc', b'abc2', b'abc3')
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'abc', b'abc3')
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'abc2', b'abc')
+
+    def test_init_indistinct_nop(self):
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'abc2', b'abc1')
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'abc2', b'abc2')
+
+    def test_init_indistinct_begin_end(self):
+        self.assertRaises(ValueError, framers.StuffingFramer,
+                          b'abc1', b'abc1', b'abc3')
+
+    def test_init(self):
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+
+        self.assertEqual(framer.begin, b'abc1')
+        self.assertEqual(framer.end, b'abc2')
+        self.assertEqual(framer.nop, b'abc3')
+        self.assertEqual(framer.prefix, b'abc')
+
+    def test_initialize_state(self):
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+        state = framers.FramerState()
+
+        framer.initialize_state(state)
+
+        self.assertEqual(dict(state), {'frame_start': False})
+
+    def test_to_frame_nostart(self):
+        data = bytearray(b'this is a testabc2')
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+        state = framers.FramerState()
+        framer.initialize_state(state)
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, state)
+        self.assertEqual(dict(state), {'frame_start': False})
+        self.assertEqual(data, bytearray(b'this is a testabc2'))
+
+    def test_to_frame_withstart_noend(self):
+        data = bytearray(b'ignorable paddingabc1this is a testabc')
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+        state = framers.FramerState()
+        framer.initialize_state(state)
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, state)
+        self.assertEqual(dict(state), {'frame_start': True})
+        self.assertEqual(data, bytearray(b'this is a testabc'))
+
+    def test_to_frame_withstart(self):
+        data = bytearray(b'ignorable paddingabc1this is abc3 a abc3 testabc2'
+                         b'trailer')
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+        state = framers.FramerState()
+        framer.initialize_state(state)
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'this is abc a abc test')
+        self.assertEqual(dict(state), {'frame_start': False})
+        self.assertEqual(data, bytearray(b'trailer'))
+
+    def test_to_frame_previous_start(self):
+        data = bytearray(b'abc1this is abc3 a abc3 testabc2trailer')
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+        state = framers.FramerState()
+        framer.initialize_state(state)
+        state.frame_start = True
+
+        result = framer.to_frame(data, state)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'abc1this is abc a abc test')
+        self.assertEqual(dict(state), {'frame_start': False})
+        self.assertEqual(data, bytearray(b'trailer'))
+
+    def test_to_bytes(self):
+        framer = framers.StuffingFramer(b'abc1', b'abc2', b'abc3')
+
+        result = framer.to_bytes(
+            bytearray(b'this abc1 is abc2 a abc3 test abc'), None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result,
+                         b'abc1this abc31 is abc32 a abc33 test abc3abc2')
+
+
+class COBSFramerTest(unittest.TestCase):
+    def test_init_default(self):
+        framer = framers.COBSFramer()
+
+        self.assertEqual(framer.variant, framers.COBSFramer.VARIANT_COBS)
+
+    def test_init(self):
+        framer = framers.COBSFramer('variant')
+
+        self.assertEqual(framer.variant, 'variant')
+
+    def test_to_frame_partial(self):
+        data = bytearray(b'this is a test')
+        variant = mock.Mock(**{'decode.return_value': bytearray(b'test')})
+        framer = framers.COBSFramer(variant)
+
+        self.assertRaises(exc.NoFrames, framer.to_frame, data, None)
+        self.assertEqual(data, bytearray(b'this is a test'))
+        self.assertFalse(variant.decode.called)
+
+    def test_to_frame_complete(self):
+        data = bytearray(b'this is a test\0trailer')
+        variant = mock.Mock(**{'decode.return_value': bytearray(b'test')})
+        framer = framers.COBSFramer(variant)
+
+        result = framer.to_frame(data, None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'test')
+        self.assertEqual(data, bytearray(b'trailer'))
+        variant.decode.assert_called_once_with(b'this is a test')
+
+    def test_to_bytes(self):
+        variant = mock.Mock(**{'encode.return_value': bytearray(b'test')})
+        framer = framers.COBSFramer(variant)
+
+        result = framer.to_bytes(b'this is a test', None)
+
+        self.assertTrue(isinstance(result, six.binary_type))
+        self.assertEqual(result, b'test\0')

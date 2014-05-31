@@ -820,15 +820,16 @@ class COBSFramer(Framer):
         # Find the next null byte
         data_len = data.find(b'\0')
 
-        if idx < 0:
+        if data_len < 0:
             # No full frame yet
             raise exc.NoFrames()
 
         # Track how much to exclude
-        frame_len = idx + 1
+        frame_len = data_len + 1
 
         # Decode the data
-        frame = six.binary_type(self.variant.decode(data[:data_len]))
+        frame = six.binary_type(self.variant.decode(
+            six.binary_type(data[:data_len])))
         del data[:frame_len]
 
         # Return the frame
@@ -849,4 +850,5 @@ class COBSFramer(Framer):
         """
 
         # Encode the frame and append the delimiter
-        return six.binary_type(self.variant.encode(frame)) + b'\0'
+        return six.binary_type(self.variant.encode(
+            six.binary_type(frame))) + b'\0'
