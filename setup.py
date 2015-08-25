@@ -46,7 +46,7 @@ else:
 
 setup(
     name='framer',
-    version='0.1.0',
+    version='0.1.1',
     author='Kevin L. Mitchell',
     author_email='klmitch@mit.edu',
     url='https://github.com/klmitch/framer',
