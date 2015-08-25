@@ -80,7 +80,8 @@ class FramerAdaptorTest(unittest.TestCase):
 
     @mock.patch.object(transport.FramerAdaptor, '__init__', return_value=None)
     def test_factory_positional(self, mock_init):
-        client = lambda: None
+        def client():
+            return None
 
         result = transport.FramerAdaptor.factory(client, 'framer')
 
@@ -94,7 +95,8 @@ class FramerAdaptorTest(unittest.TestCase):
 
     @mock.patch.object(transport.FramerAdaptor, '__init__', return_value=None)
     def test_factory_keyword(self, mock_init):
-        client = lambda: None
+        def client():
+            return None
 
         result = transport.FramerAdaptor.factory(client, send='send',
                                                  recv='recv')
